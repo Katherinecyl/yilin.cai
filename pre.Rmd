@@ -1,0 +1,333 @@
+---
+title: "Project Presentation"
+subtitle: "BIOS 623: Careers and Skills"
+author: "Yilin Cai"
+date: "2019/12/03 "
+output:
+  xaringan::moon_reader:
+    css: [default, uo, uo-fonts]
+    lib_dir: libs
+    nature:
+      highlightStyle: github
+      highlightLines: true
+      countIncrementalSlides: false
+    seal: false
+---
+class: inverse,bottom
+#Project Presentation
+##BIOS 623: Careers and Skills
+##Dr. Snehalata Huzurbazar
+
+
+###Yilin Cai
+###2019/12/03
+
+---
+background-image: url(https://i0.wp.com/blog.heartbeathealth.com/wp-content/uploads/2019/01/afib2ctrendingquestions.png?resize=400%2C292&ssl=1)
+
+```{r echo = FALSE, warning=FALSE, message=FALSE,tidy=FALSE}
+mydata <- read.delim("~/Desktop/BIO623_Bio Careers and skills__Dr.snehalata Huzurbazar/presentation/mydata.txt", stringsAsFactors=FALSE)
+library(tidyverse)
+library(ggplot2)
+library(tidyr)
+library(stringr)
+library(dplyr)
+library(table1)
+
+mydata_new <- mydata  %>%
+  filter( !is.na(BMI_CATEGORY) )   %>%
+  mutate(BMI_CAT = ifelse(BMI <= 24.99, "<= 24.99",
+                          ifelse(BMI>=25 & BMI <= 29.99, "25-29.99",
+                                 ifelse(BMI>=30 & BMI <= 34.99, "30-34.99",
+                                        ifelse(BMI>=35 & BMI <= 39.99, "35-39.99",">= 40"))))) %>%
+  mutate( BMI_CAT = recode_factor( BMI_CAT ,
+                                   "<= 24.99"  = "<= 24.99",
+                                   "25-29.99" = "25-29.99",
+                                   "30-34.99" = "30-34.99",
+                                   "35-39.99" = "35-39.99",
+                                   ">= 40" = ">= 40"))   %>%
+  mutate( Clotting = as.numeric( as.character(CLOT)  ) )%>%
+  mutate( Bleeding = as.numeric( as.character(BLEED ) )) 
+
+
+mydata_new_1 <- mydata_new %>% 
+  mutate( Bleed_Clot = rowSums(mydata_new[,31:32])) %>%
+  mutate( Bleed_Clot = ifelse(Bleed_Clot == "2", "Bleed_Clot",
+                            ifelse(Bleed_Clot == "1",  "Bleed_Clot", "0"))) %>%
+  select(SEX ,AGE, BMI, BMI_CAT, Clotting, Bleeding, Bleed_Clot, DEAD, Treatment) %>%
+  mutate( Clotting = recode_factor( Clotting ,
+                                   "1"  = "Clotting",
+                                   "0" = "No Clotting"))  %>%
+  mutate( Bleeding = recode_factor( Bleeding ,
+                                   "1"  = "Bleeding",
+                                   "0" = "No Bleeding")) %>%
+  mutate( Gender = ifelse(SEX == "M", "Male", "Female")) %>%
+  mutate( Gender = recode_factor( Gender ,
+                                    "Male"  = "Male",
+                                    "Female" = "Female")) %>%
+  mutate( Age = ifelse(AGE == "1", "Age < 65",
+                              ifelse(AGE == "2",  "Age 65-74", "Age >=75"))) %>%
+  mutate( Age = recode_factor( Age ,
+                                  "Age < 65"  = "Age < 65",
+                                  "Age 65-74" = "Age 65-74",
+                                 "Age >=75" = "Age >=75" )) 
+Clotting <- table1( ~ Gender + Age + BMI_CAT | Clotting , data=mydata_new_1 )
+Bleeding <- table1( ~ Gender + Age + BMI_CAT | Bleeding , data=mydata_new_1 )
+
+
+######################or % by column:
+mycrosstabs<-function(x,y){
+  ###column %
+  z<-table(x,y)
+  n.col<-apply(z,2,sum)
+  n.rw<-apply(z,1,sum)
+  prop<-t(round(100*t(z)/n.col))
+  xx<-data.frame(matrix(paste(z,"(",prop,")",sep=""),nrow=dim(z)[1],ncol=dim(z)[2]))
+  pval<-rep("",dim(z)[1])
+  pval[1]<-round(chisq.test(x,y)$p.value,3)
+  xx<-data.frame(xx,n.rw,pval)
+  dimnames(xx)[[2]]<-c(dimnames(z)[[2]],"N","p")
+  dimnames(xx)[[1]] <-dimnames(z)[[1]]
+  print(xx)
+}
+
+
+mytab2<-function(x, y)
+{
+  n <- dim(x)[2]
+  for(i in 1:n) {
+    cat(dimnames(x)[[2]][i],"\n")
+    myx<-as.factor(as.character(x[,i]))
+    mycrosstabs(myx,y)
+  }
+  return()
+}
+
+
+#table1 p.val clotting
+#mytab2(mydata_new[,c(9,10,30)], mydata_new[,31])
+#noac #table1 p.val bleeding
+#mytab2(mydata_new[,c(9,10,30)], mydata_new[,32])
+
+
+##BMI overall, raw BMI histogram
+Figure1 <- ggplot( mydata_new_1 , aes(x= BMI)) + 
+  geom_histogram(color="darkblue", fill="lightblue", bins = 60)  +
+  theme_bw()    +
+  labs( x="BMI",
+        y="Count" ) +
+  theme( axis.text   = element_text(size=10),
+         axis.title  = element_text(size=10),
+         plot.title = element_text(size = 12)  ) + 
+  geom_vline( xintercept=25 , 
+              color="indianred3", linetype="dashed") 
+
+
+# raw BMI by gender
+Figure2 <- ggplot( mydata_new_1 , aes(x = BMI )) + 
+  geom_density( aes( fill=Gender, color=Gender),  alpha=0.30)  +
+  theme_bw() +  
+  labs( x="BMI",
+        fill = "Gender",
+        color= "Gender" ) + 
+  geom_vline( xintercept=25 , 
+              color="indianred3", linetype="dashed")  
+
+
+# raw BMI by AGE
+Figure3 <- ggplot( mydata_new_1 , aes(x = BMI )) + 
+  geom_density( aes( fill=Age, color=Age),  alpha=0.30)  +
+  theme_bw() +  
+  labs( x="BMI",
+        fill = "Age",
+        color= "Age" ) + 
+  geom_vline( xintercept=25 , 
+              color="indianred3", linetype="dashed")  
+
+
+
+#BMI VS Income VS Race
+mydata_clot <- mydata_new_1  %>%
+  select( Treatment, Clotting, BMI_CAT ) %>%
+  group_by(Treatment, BMI_CAT, Clotting)  %>%
+  dplyr::summarise (n = n()) %>%
+  group_by(Treatment, Clotting)  %>%
+  mutate(prop = n / sum(n) )
+
+
+mydata_bleed<- mydata_new_1  %>%
+  select( Treatment, Bleeding, BMI_CAT ) %>%
+  group_by(Treatment, BMI_CAT,Bleeding)  %>%
+  dplyr::summarise (n = n()) %>%
+  group_by(Treatment, Bleeding)  %>%
+  mutate(prop = n / sum(n) )
+
+Figure4 <- ggplot(mydata_clot,aes(BMI_CAT,prop,fill=Clotting, 
+                             label = scales::percent(prop)))  +
+  geom_bar(stat="identity",position='dodge') +
+  facet_wrap( ~ Treatment ) +
+  theme_bw()    +
+  labs( fill="Clotting",
+        x="BMI",
+        y="Percentage")   +
+  scale_y_continuous( breaks=seq(0.0,0.30,0.05),
+                      labels= paste0(seq(0 ,30, 5), "%") )  +
+  geom_text(position = position_dodge(width = .9),   
+            vjust = -0.5,   
+            size = 3)  + 
+  theme(legend.position = "bottom")  +
+  scale_fill_brewer( palette="Paired" ) 
+
+
+Figure5 <- ggplot(mydata_bleed,aes(BMI_CAT,prop,fill=Bleeding, 
+                                  label = scales::percent(prop)))  +
+  geom_bar(stat="identity",position='dodge') +
+  facet_wrap( ~ Treatment ) +
+  theme_bw()    +
+  labs( fill="Bleeding",
+        x="BMI",
+        y="Percentage")   +
+  scale_y_continuous( breaks=seq(0.0,0.30,0.05),
+                      labels= paste0(seq(0 ,30, 5), "%") )  +
+  geom_text(position = position_dodge(width = .9),   
+            vjust = -0.5,   
+            size = 3)  + 
+  theme(legend.position = "bottom")  +
+  scale_fill_brewer( palette="Paired" ) 
+
+
+```
+---
+
+#Atrial Fibrillation 
+
+--
+- A common for of heart disease that affects up to 1 in 3 people.
+
+--
+- Risk factors: 
+
+ + Older age
+ 
+ + High blood pressure
+ 
+ + Diabetes
+ 
+ + Smoking
+ 
+ + Prior heart attacks
+ 
+ + Heavy alcohol use
+
+---
+class: inverse, center, middle
+
+#Clinical Question:
+
+--
+
+Is the human subjects in the previous clinical trial repersentative for the current population in the United States?
+
+
+---
+class: inverse, center, middle
+
+#Objective:
+
+--
+
+Assessing the efficiency of two treatments: 
+
+--
+
+NOAC vs. WARFARIN
+
+
+---
+class: center, middle
+
+##Overall BMI Distribution
+
+```{r fig.retina = 6, echo = FALSE, fig.width=10}
+Figure1
+
+```
+
+---
+
+class: center, middle
+
+##Density Plot of BMI by Gender
+
+```{r fig.retina = 6, echo = FALSE, fig.width=10}
+
+Figure2
+
+```
+
+
+
+---
+
+class: center, middle
+
+##Density Plot of BMI by Age
+
+```{r fig.retina = 6, echo = FALSE, fig.width=10}
+
+Figure3
+
+```
+
+---
+
+class: center, top
+
+##Summary Tables for Clotting and Bleeding events
+
+.pull-left[
+```{r fig.retina = 6, echo = FALSE, fig.width=10}
+Clotting
+```
+]
+
+
+.pull-right[
+```{r fig.retina = 6, echo = FALSE, fig.width=10}
+
+Bleeding
+
+```
+]
+---
+class: center top
+
+##BMI by Clotting for different Treatment 
+####P.value=0.811 (NOAC) P.value=0.805 (WARFARIN)
+
+```{r fig.retina = 6, echo = FALSE, fig.width=10, fig.height=6}
+
+Figure4
+
+```
+
+---
+
+class: center top
+
+##BMI by Bleeding for different Treatment
+####P.value=0.703 (NOAC) P.value=0.037 (WARFARIN)
+
+```{r fig.retina = 6, echo = FALSE, fig.width=10, fig.height=6}
+
+Figure5
+
+```
+
+---
+
+class: inverse, center, middle
+
+#Thank you!!!
+
+
